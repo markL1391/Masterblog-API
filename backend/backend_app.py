@@ -16,6 +16,17 @@ def get_next_id():
     """
     return max(post["id"] for post in POSTS) + 1 if POSTS else 1
 
+
+def find_post_by_id(post_id):
+    """
+    Find a post by its ID.
+    Returns the post if found, otherwise None.
+    """
+    for post in POSTS:
+        if post["id"] == post_id:
+            return post
+    return None
+
 @app.route("/api/posts", methods=["GET"])
 def get_posts():
     """Return (GET) all blog posts."""
@@ -52,25 +63,46 @@ def add_post():
 @app.route("/api/posts/<int:id>", methods=["DELETE"])
 def delete_post(id):
     """
-    Delete a blog post.
+    Delete a blog post by its ID.
     """
 
     # Find the post by ID.
-    post_to_delete = None
-    for post in POSTS:
-        if post["id"] == id:
-            post_to_delete = post
-            break
+    post = find_post_by_id(id)
 
     # If not found (error: 404).
-    if post_to_delete is None:
+    if post is None:
         return jsonify({"error": f"Post with ID {id} not found."}), 404
 
     # Remove the post.
-    POSTS.remove(post_to_delete)
+    POSTS.remove(post)
 
     # Success message.
     return jsonify({"message": f"Post with ID {id} has been deleted successfully."}), 200
+
+
+@app.route("/api/posts/<int:id>", methods=["PUT"])
+def update_post(id):
+    """
+    Update an existing blog post by its ID.
+    Only provided fields (title and/or content) will be updated.
+    """
+    post = find_post_by_id(id)
+
+    if post is None:
+        return jsonify({"error": f"Post with ID {id} not found."}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid or missing JSON"}), 400
+
+    # Only update if provided (and not empty).
+    if "title" in data and str(data["title"]).strip():
+        post["title"] = data["title"]
+
+    if "content" in data and str(data["content"]).strip():
+        post["content"] = data["content"]
+
+    return jsonify(post), 200
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5002, debug=True)
