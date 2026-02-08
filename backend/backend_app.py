@@ -104,5 +104,37 @@ def update_post(id):
 
     return jsonify(post), 200
 
+
+@app.route("/api/posts/search", methods=["GET"])
+def search_posts():
+    """
+    Search posts by title and/or content using query parameters.
+    """
+    title_query = request.args.get("title", "").strip().lower()
+    content_query = request.args.get("content", "").strip().lower()
+
+    results = []
+
+    for post in POSTS:
+        title_text = post.get("title", "").lower()
+        content_text = post.get("content", "").lower()
+
+        title_match = True
+        content_match = True
+
+        # If title query is provided, it must be contained in the post title.
+        if title_query:
+            title_match = title_query in title_text
+
+        # If content query is provided, it must be contained in the post content.
+        if content_query:
+            content_match = content_query in content_text
+
+        # If both conditions pass, include the post
+        if title_match and content_match:
+            results.append(post)
+
+    return jsonify(results), 200
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5002, debug=True)
