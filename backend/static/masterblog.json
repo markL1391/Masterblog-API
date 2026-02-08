@@ -2,146 +2,213 @@
   "swagger": "2.0",
   "info": {
     "title": "Masterblog API",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "description": "Simple REST API for blog posts (list, add, delete, update, search, sort)."
   },
-  "host": "localhost:5002",
+  "host": "127.0.0.1:5002",
   "basePath": "/",
   "schemes": ["http"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
   "tags": [
-    { "name": "Post", "description": "Post API - CRUD + Search + Sort" }
+    { "name": "Posts", "description": "CRUD and query operations for posts" }
   ],
+  "definitions": {
+    "Post": {
+      "type": "object",
+      "required": ["id", "title", "content", "author", "date"],
+      "properties": {
+        "id": { "type": "integer", "example": 1 },
+        "title": { "type": "string", "example": "First post" },
+        "content": { "type": "string", "example": "This is the first post." },
+        "author": { "type": "string", "example": "Mark" },
+        "date": { "type": "string", "example": "2026-02-08", "description": "Format YYYY-MM-DD" }
+      }
+    },
+    "PostCreate": {
+      "type": "object",
+      "required": ["title", "content"],
+      "properties": {
+        "title": { "type": "string", "example": "New post title" },
+        "content": { "type": "string", "example": "New post content" },
+        "author": { "type": "string", "example": "Mark" },
+        "date": { "type": "string", "example": "2026-02-08", "description": "Optional, format YYYY-MM-DD" }
+      }
+    },
+    "PostUpdate": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "example": "Updated title" },
+        "content": { "type": "string", "example": "Updated content" },
+        "author": { "type": "string", "example": "Updated author" },
+        "date": { "type": "string", "example": "2026-02-09", "description": "Optional, format YYYY-MM-DD" }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "properties": {
+        "error": { "type": "string", "example": "Invalid or missing JSON" }
+      }
+    },
+    "DeleteMessage": {
+      "type": "object",
+      "properties": {
+        "message": { "type": "string", "example": "Post with ID 1 has been deleted successfully." }
+      }
+    }
+  },
   "paths": {
     "/api/posts": {
       "get": {
-        "summary": "Return all posts (optional sorting)",
-        "produces": ["application/json"],
-        "tags": ["Post"],
+        "tags": ["Posts"],
+        "summary": "List posts (optional search + sorting)",
         "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "type": "string",
+            "required": false,
+            "description": "Search term across title, content, author, date"
+          },
           {
             "name": "sort",
             "in": "query",
             "type": "string",
-            "enum": ["title", "content"],
             "required": false,
+            "enum": ["title", "content", "author", "date"],
             "description": "Sort field"
           },
           {
             "name": "direction",
             "in": "query",
             "type": "string",
-            "enum": ["asc", "desc"],
             "required": false,
-            "description": "Sort direction (default: asc)"
+            "enum": ["asc", "desc"],
+            "default": "asc",
+            "description": "Sort direction"
           }
         ],
         "responses": {
-          "200": { "description": "Successful operation" },
-          "400": { "description": "Invalid sort field or direction" }
+          "200": {
+            "description": "List of posts",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/Post" }
+            }
+          },
+          "400": {
+            "description": "Invalid sort field or direction",
+            "schema": { "$ref": "#/definitions/Error" }
+          }
         }
       },
       "post": {
+        "tags": ["Posts"],
         "summary": "Create a new post",
-        "consumes": ["application/json"],
-        "produces": ["application/json"],
-        "tags": ["Post"],
         "parameters": [
           {
             "name": "body",
             "in": "body",
             "required": true,
-            "schema": {
-              "type": "object",
-              "required": ["title", "content"],
-              "properties": {
-                "title": { "type": "string", "example": "My new post" },
-                "content": { "type": "string", "example": "Hello world..." }
-              }
-            }
+            "schema": { "$ref": "#/definitions/PostCreate" }
           }
         ],
         "responses": {
-          "201": { "description": "Post created" },
-          "400": { "description": "Missing required fields / invalid JSON" }
+          "201": {
+            "description": "Created post",
+            "schema": { "$ref": "#/definitions/Post" }
+          },
+          "400": {
+            "description": "Invalid input",
+            "schema": { "$ref": "#/definitions/Error" }
+          }
         }
       }
     },
-
     "/api/posts/{id}": {
       "put": {
-        "summary": "Update an existing post (title/content optional)",
-        "consumes": ["application/json"],
-        "produces": ["application/json"],
-        "tags": ["Post"],
+        "tags": ["Posts"],
+        "summary": "Update an existing post by ID",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "integer",
-            "format": "int32"
+            "type": "integer"
           },
           {
             "name": "body",
             "in": "body",
             "required": true,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "title": { "type": "string", "example": "Updated title" },
-                "content": { "type": "string", "example": "Updated content" }
-              }
-            }
+            "schema": { "$ref": "#/definitions/PostUpdate" }
           }
         ],
         "responses": {
-          "200": { "description": "Post updated" },
-          "400": { "description": "Invalid or missing JSON" },
-          "404": { "description": "Post not found" }
+          "200": {
+            "description": "Updated post",
+            "schema": { "$ref": "#/definitions/Post" }
+          },
+          "400": {
+            "description": "Invalid input (e.g., missing JSON or invalid date)",
+            "schema": { "$ref": "#/definitions/Error" }
+          },
+          "404": {
+            "description": "Post not found",
+            "schema": { "$ref": "#/definitions/Error" }
+          }
         }
       },
       "delete": {
+        "tags": ["Posts"],
         "summary": "Delete a post by ID",
-        "produces": ["application/json"],
-        "tags": ["Post"],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "type": "integer",
-            "format": "int32"
+            "type": "integer"
           }
         ],
         "responses": {
-          "200": { "description": "Post deleted" },
-          "404": { "description": "Post not found" }
+          "200": {
+            "description": "Delete confirmation message",
+            "schema": { "$ref": "#/definitions/DeleteMessage" }
+          },
+          "404": {
+            "description": "Post not found",
+            "schema": { "$ref": "#/definitions/Error" }
+          }
         }
       }
     },
-
     "/api/posts/search": {
       "get": {
-        "summary": "Search posts by title and/or content",
-        "produces": ["application/json"],
-        "tags": ["Post"],
+        "tags": ["Posts"],
+        "summary": "Search posts by title/content query parameters",
         "parameters": [
           {
             "name": "title",
             "in": "query",
             "type": "string",
             "required": false,
-            "description": "Search term contained in title"
+            "description": "Search term for title"
           },
           {
             "name": "content",
             "in": "query",
             "type": "string",
             "required": false,
-            "description": "Search term contained in content"
+            "description": "Search term for content"
           }
         ],
         "responses": {
-          "200": { "description": "Returns a list of matching posts (can be empty)" }
+          "200": {
+            "description": "Matching posts (can be empty)",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/Post" }
+            }
+          }
         }
       }
     }

@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
+from datetime import datetime
 
 
 app = Flask(__name__)
@@ -16,10 +17,9 @@ swagger_ui_blueprint = get_swaggerui_blueprint(
 
 app.register_blueprint(swagger_ui_blueprint, url_prefix=SWAGGER_URL)
 
-
 POSTS = [
-    {"id": 1, "title": "First post", "content": "This is the first post."},
-    {"id": 2, "title": "Second post", "content": "This is the second post."},
+    {"id": 1, "title": "First post", "content": "This is the first post.", "author": "Mark", "date": "2026-02-08"},
+    {"id": 2, "title": "Second post", "content": "This is the second post.", "author": "Mark", "date": "2026-02-07"},
 ]
 
 
@@ -40,24 +40,56 @@ def find_post_by_id(post_id):
             return post
     return None
 
+def is_valid_date(date_str: str) -> bool:
+    """
+    Validate whether a date string matches the format YYYY-MM-DD.
+    """
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+        return True
+    except (TypeError, ValueError):
+        return False
+
+def parse_date(date_str: str):
+    """
+    Convert a date string (YYYY-MM-DD) into a date object.
+    """
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return None
+
 @app.route("/api/posts", methods=["GET"])
 def get_posts():
     """
     Return (GET) all blog posts.
-    (Optionally sorted by title/content.
+    (Optionally sorted by title/content).
     """
+    results = list(POSTS)
 
+    # Search across fields
+    search = request.args.get("search", "").strip().lower()
+    if search:
+        results = [
+            p for p in results
+            if search in str(p.get("title", "")).lower()
+            or search in str(p.get("content", "")).lower()
+            or search in str(p.get("author", "")).lower()
+            or search in str(p.get("date", "")).lower()
+        ]
+
+    # Optional sorting
     sort_field = request.args.get("sort")                   # None, "title", "content"
     direction = request.args.get("direction", "asc")        # "asc" or "desc"
 
     # If not sort -> keep original order.
     if not sort_field:
-        return jsonify(POSTS), 200
+        return jsonify(results), 200
 
     # Validate sort field
-    if sort_field not in {"title", "content"}:
+    if sort_field not in {"title", "content", "author", "date"}:
         return jsonify({
-            "error": "Invalid sort field. Allowed values: title, content."
+            "error": "Invalid sort field. Allowed values: title, content, author, date."
         }), 400
 
     # Validate direction
@@ -69,13 +101,21 @@ def get_posts():
     reverse = (direction == "desc")
 
     # Sort a COPY so POSTS stays in original order
-    sorted_post = sorted(
-        POSTS,
-        key=lambda p: (p.get(sort_field) or "").lower(),
+    if sort_field == "date":
+        results = sorted(
+        results,
+        key=lambda p: (parse_date(p.get("date")) is None, parse_date(p.get("date"))),
         reverse=reverse
-    )
+        )
+    else:
+        results = sorted(
+            results,
+            key=lambda p: (p.get(sort_field) or "").lower(),
+            reverse=reverse
+        )
 
-    return jsonify(sorted_post), 200
+    return jsonify(results), 200
+
 
 @app.route("/api/posts", methods=["POST"])
 def add_post():
@@ -95,10 +135,20 @@ def add_post():
     if missing:
         return jsonify({"error": "Missing required fields.", "missing": missing}), 400
 
+    author = str(data.get("author", "Unknown")).strip() or "Unknown"
+    date_str = data.get("date")
+
+    if date_str is None:
+        date_str = datetime.today().strftime("%Y-%m-%d")
+    elif not is_valid_date(date_str):
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+
     new_post = {
         "id": get_next_id(),
         "title": data["title"],
-        "content": data["content"]
+        "content": data["content"],
+        "author": author,
+        "date": date_str
     }
 
     POSTS.append(new_post)
@@ -146,6 +196,14 @@ def update_post(id):
 
     if "content" in data and str(data["content"]).strip():
         post["content"] = data["content"]
+
+    if "author" in data and str(data["author"]).strip():
+        post["author"] = data["author"]
+
+    if "date" in data:
+        if not is_valid_date(data["date"]):
+            return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+        post["date"] = data["date"]
 
     return jsonify(post), 200
 
