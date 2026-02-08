@@ -29,8 +29,40 @@ def find_post_by_id(post_id):
 
 @app.route("/api/posts", methods=["GET"])
 def get_posts():
-    """Return (GET) all blog posts."""
-    return jsonify(POSTS)
+    """
+    Return (GET) all blog posts.
+    (Optionally sorted by title/content.
+    """
+
+    sort_field = request.args.get("sort")                   # None, "title", "content"
+    direction = request.args.get("direction", "asc")        # "asc" or "desc"
+
+    # If not sort -> keep original order.
+    if not sort_field:
+        return jsonify(POSTS), 200
+
+    # Validate sort field
+    if sort_field not in {"title", "content"}:
+        return jsonify({
+            "error": "Invalid sort field. Allowed values: title, content."
+        }), 400
+
+    # Validate direction
+    if direction not in {"asc", "desc"}:
+        return jsonify({
+            "error": "Invalid direction. Allowed values: asc, desc."
+        }), 400
+
+    reverse = (direction == "desc")
+
+    # Sort a COPY so POSTS stays in original order
+    sorted_post = sorted(
+        POSTS,
+        key=lambda p: (p.get(sort_field) or "").lower(),
+        reverse=reverse
+    )
+
+    return jsonify(sorted_post), 200
 
 @app.route("/api/posts", methods=["POST"])
 def add_post():
