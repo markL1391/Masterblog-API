@@ -201,7 +201,7 @@
             "description": "Search term for content"
           }
         ],
-        "responses": {
+        "responses":  {
           "200": {
             "description": "Matching posts (can be empty)",
             "schema": {
