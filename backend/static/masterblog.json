@@ -1,0 +1,149 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Masterblog API",
+    "version": "1.0.0"
+  },
+  "host": "localhost:5002",
+  "basePath": "/",
+  "schemes": ["http"],
+  "tags": [
+    { "name": "Post", "description": "Post API - CRUD + Search + Sort" }
+  ],
+  "paths": {
+    "/api/posts": {
+      "get": {
+        "summary": "Return all posts (optional sorting)",
+        "produces": ["application/json"],
+        "tags": ["Post"],
+        "parameters": [
+          {
+            "name": "sort",
+            "in": "query",
+            "type": "string",
+            "enum": ["title", "content"],
+            "required": false,
+            "description": "Sort field"
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "type": "string",
+            "enum": ["asc", "desc"],
+            "required": false,
+            "description": "Sort direction (default: asc)"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful operation" },
+          "400": { "description": "Invalid sort field or direction" }
+        }
+      },
+      "post": {
+        "summary": "Create a new post",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["Post"],
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["title", "content"],
+              "properties": {
+                "title": { "type": "string", "example": "My new post" },
+                "content": { "type": "string", "example": "Hello world..." }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": { "description": "Post created" },
+          "400": { "description": "Missing required fields / invalid JSON" }
+        }
+      }
+    },
+
+    "/api/posts/{id}": {
+      "put": {
+        "summary": "Update an existing post (title/content optional)",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["Post"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "title": { "type": "string", "example": "Updated title" },
+                "content": { "type": "string", "example": "Updated content" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Post updated" },
+          "400": { "description": "Invalid or missing JSON" },
+          "404": { "description": "Post not found" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a post by ID",
+        "produces": ["application/json"],
+        "tags": ["Post"],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Post deleted" },
+          "404": { "description": "Post not found" }
+        }
+      }
+    },
+
+    "/api/posts/search": {
+      "get": {
+        "summary": "Search posts by title and/or content",
+        "produces": ["application/json"],
+        "tags": ["Post"],
+        "parameters": [
+          {
+            "name": "title",
+            "in": "query",
+            "type": "string",
+            "required": false,
+            "description": "Search term contained in title"
+          },
+          {
+            "name": "content",
+            "in": "query",
+            "type": "string",
+            "required": false,
+            "description": "Search term contained in content"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Returns a list of matching posts (can be empty)" }
+        }
+      }
+    }
+  }
+}
